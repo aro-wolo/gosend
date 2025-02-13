@@ -4,7 +4,10 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"html/template"
 	"log"
+	"os"
+	"strings"
 
 	"gopkg.in/gomail.v2"
 )
@@ -35,8 +38,45 @@ type Recipients struct {
 	Bcc []string `json:"bcc,omitempty"`
 }
 
-// SendMail sends an email using the provided SMTP configuration
-func SendMail(config SMTPConfig, r Recipients, subject, msg string, from ...string) error {
+// Template represents an email template
+type Template struct {
+	Subject string
+	Body    string
+}
+
+// ParseTemplate parses an email template from a file
+func ParseTemplate(filePath string) (*Template, error) {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read template file: %v", err)
+	}
+
+	tmpl := &Template{
+		Body: string(content),
+	}
+	return tmpl, nil
+}
+
+// RenderTemplate renders the template with the provided data
+func (t *Template) RenderTemplate(data interface{}) (string, error) {
+	tmpl, err := template.New("email").Parse(t.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse template: %v", err)
+	}
+
+	var renderedBody string
+	writer := &strings.Builder{}
+	err = tmpl.Execute(writer, data)
+	if err != nil {
+		return "", fmt.Errorf("failed to render template: %v", err)
+	}
+	renderedBody = writer.String()
+
+	return renderedBody, nil
+}
+
+// Now sends an email using the provided SMTP configuration
+func Now(config SMTPConfig, r Recipients, subject, msg string, from ...string) error {
 	// Validate SMTP configuration
 	if config.Username == "" || config.Password == "" || config.Server == "" {
 		return errors.New("SMTP configuration is missing required fields")

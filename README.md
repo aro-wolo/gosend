@@ -1,184 +1,218 @@
-# GoSend Email Package
+# GoSend
 
-This Go package provides a simple and flexible way to send emails using SMTP. It supports multiple environments (Debug, Test, and Live), allowing you to log emails instead of sending them during development or testing. The package is built on top of the popular `gomail.v2` library.
-
----
+GoSend is a lightweight and flexible Go package for sending emails using SMTP. It supports multiple modes of operation (Debug, Test, and Live), optional email templates for dynamic content generation, and easy configuration for sending emails to multiple recipients, including CC and BCC.
 
 ## Features
 
-- **Multiple Environments**: Supports Debug, Test, and Live modes.
-- **Flexible Configuration**: Allows custom SMTP settings, including username, password, server, and port.
-- **Recipient Management**: Supports To, Cc, and Bcc recipients.
-- **HTML Emails**: Sends emails with HTML content.
-- **TLS Support**: Configurable TLS settings for secure email delivery.
-- **Debug Mode**: Logs email details instead of sending them in Debug mode.
+- **Multiple Environment Modes**:
 
----
+  - **Debug Mode**: Logs email details instead of sending the email.
+  - **Test Mode**: Sends emails but skips TLS verification (useful for local testing).
+  - **Live Mode**: Sends emails using the provided SMTP settings.
+
+- **Optional Template System**: Supports dynamic email content generation using Go's `html/template` package.
+
+- **Flexible Configuration**: Allows configuration of SMTP settings, including username, password, server, port, and mode.
+
+- **Customizable Sender**: Supports setting a custom sender email address, with a fallback to the SMTP username if not provided.
+
+- **Recipient Management**: Supports sending emails to multiple recipients, including CC and BCC fields.
 
 ## Installation
 
-To use this package in your Go project, run:
+To use GoSend in your Go project, install it using `go get`:
 
 ```bash
 go get github.com/aro-wolo/gosend
 ```
 
----
-
 ## Usage
 
-### Import the Package
+### Basic Example (Without Templates)
 
-```go
-import (
-	"github.com/aro-wolo/gosend"
-)
-```
-
-### Example: Sending an Email
+Here's a simple example of how to use GoSend to send an email without templates:
 
 ```go
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/aro-wolo/gosend"
 )
 
 func main() {
-	// SMTP Configuration
+	// Define SMTP configuration
 	config := gosend.SMTPConfig{
 		Username: "your-email@example.com",
 		Password: "your-email-password",
 		Server:   "smtp.example.com",
 		Port:     587,
-		Mode:     gosend.Live, // Use Debug, Test, or Live
-		From:     "no-reply@example.com",
+		Mode:     gosend.Live,
+		From:     "your-email@example.com",
 	}
 
-	// Recipients
+	// Define recipients
 	recipients := gosend.Recipients{
-		To:  []string{"recipient1@example.com", "recipient2@example.com"},
-		Cc:  []string{"cc@example.com"},
-		Bcc: []string{"bcc@example.com"},
+		To: []string{"recipient@example.com"},
 	}
 
-	// Email Content
-	subject := "Test Email"
-	message := `<h1>Hello, World!</h1><p>This is a test email.</p>`
-
-	// Send Email
-	err := gosend.SendMail(config, recipients, subject, message)
+	// Send email
+	err := gosend.Now(config, recipients, "Plain Subject", "<h1>Hello, World!</h1>")
 	if err != nil {
 		log.Fatalf("Failed to send email: %v", err)
 	}
 
-	fmt.Println("Email sent successfully!")
+	log.Println("Email sent successfully!")
 }
 ```
 
----
+### Using Templates
 
-## Configuration
+GoSend supports dynamic email content generation using templates. Here's how to use it:
 
-### `SMTPConfig`
+1. **Create a Template File**:
+   Save the following content in a file named `notification_template.html`:
 
-| Field      | Description                                         | Default Value |
-| ---------- | --------------------------------------------------- | ------------- |
-| `Username` | SMTP username (usually your email address).         | Required      |
-| `Password` | SMTP password.                                      | Required      |
-| `Server`   | SMTP server address (e.g., `smtp.gmail.com`).       | Required      |
-| `Port`     | SMTP port (e.g., `587` for TLS).                    | `587`         |
-| `Mode`     | Execution mode: `Debug`, `Test`, or `Live`.         | `Live`        |
-| `From`     | Sender email address. If empty, `Username` is used. | Optional      |
+   ```html
+   <!DOCTYPE html>
+   <html>
+   	<head>
+   		<title>Notification</title>
+   	</head>
+   	<body>
+   		<h1>Hello, {{.Name}}!</h1>
+   		<p>This is a notification regarding your recent activity.</p>
+   		<p>Details:</p>
+   		<ul>
+   			<li>Activity: {{.Activity}}</li>
+   			<li>Date: {{.Date}}</li>
+   		</ul>
+   		<p>If you have any questions, feel free to contact us.</p>
+   		<p>Best regards,</p>
+   		<p>The Team</p>
+   	</body>
+   </html>
+   ```
 
-### `Recipients`
+2. **Send Email Using the Template**:
 
-| Field | Description                              | Example                             |
-| ----- | ---------------------------------------- | ----------------------------------- |
-| `To`  | Primary recipients (required).           | `[]string{"recipient@example.com"}` |
-| `Cc`  | Carbon copy recipients (optional).       | `[]string{"cc@example.com"}`        |
-| `Bcc` | Blind carbon copy recipients (optional). | `[]string{"bcc@example.com"}`       |
+   ```go
+   package main
 
----
+   import (
+   	"log"
+   	"time"
 
-## Modes
+   	"github.com/aro-wolo/gosend"
+   )
 
-### 1. **Debug Mode**
+   func main() {
+   	// Define SMTP configuration
+   	config := gosend.SMTPConfig{
+   		Username: "your-email@example.com",
+   		Password: "your-email-password",
+   		Server:   "smtp.example.com",
+   		Port:     587,
+   		Mode:     gosend.Live,
+   		From:     "your-email@example.com",
+   	}
 
-- Logs email details instead of sending them.
-- Useful for development and testing.
-- Example:
-  ```go
-  config.Mode = gosend.Debug
-  ```
+   	// Define recipients
+   	recipients := gosend.Recipients{
+   		To: []string{"recipient@example.com"},
+   	}
 
-### 2. **Test Mode**
+   	// Parse the template
+   	template, err := gosend.ParseTemplate("notification_template.html")
+   	if err != nil {
+   		log.Fatalf("Failed to parse template: %v", err)
+   	}
 
-- Sends emails but skips TLS certificate verification.
-- Useful for testing with self-signed certificates.
-- Example:
-  ```go
-  config.Mode = gosend.Test
-  ```
+   	// Define template data
+   	data := struct {
+   		Name     string
+   		Activity string
+   		Date     string
+   	}{
+   		Name:     "John Doe",
+   		Activity: "Account Login",
+   		Date:     time.Now().Format("2006-01-02 15:04:05"),
+   	}
 
-### 3. **Live Mode**
+   	// Render the template
+   	renderedBody, err := template.RenderTemplate(data)
+   	if err != nil {
+   		log.Fatalf("Failed to render template: %v", err)
+   	}
 
-- Sends emails with full TLS verification.
-- Use this in production.
-- Example:
-  ```go
-  config.Mode = gosend.Live
-  ```
+   	// Send email
+   	err = gosend.Now(config, recipients, "Notification", renderedBody)
+   	if err != nil {
+   		log.Fatalf("Failed to send email: %v", err)
+   	}
 
----
+   	log.Println("Email sent successfully!")
+   }
+   ```
 
-## Error Handling
+### Configuration
 
-The `SendMail` function returns an error if:
-
-- SMTP configuration is incomplete.
-- No primary recipient is specified.
-- Email sending fails.
-
-Example error handling:
+The `SMTPConfig` struct is used to configure the SMTP settings:
 
 ```go
-err := gosend.SendMail(config, recipients, subject, message)
-if err != nil {
-    log.Fatalf("Failed to send email: %v", err)
+type SMTPConfig struct {
+	Username string      // SMTP username (usually your email address)
+	Password string      // SMTP password
+	Server   string      // SMTP server address
+	Port     int         // SMTP port (defaults to 587 if not provided)
+	Mode     Environment // Debug, Test, or Live mode
+	From     string      // Optional sender email address
 }
 ```
 
----
+### Recipients
+
+The `Recipients` struct is used to specify the email recipients:
+
+```go
+type Recipients struct {
+	To  []string `json:"to"`           // Primary recipients
+	Cc  []string `json:"cc,omitempty"` // CC recipients (optional)
+	Bcc []string `json:"bcc,omitempty"` // BCC recipients (optional)
+}
+```
+
+### Template System
+
+The `Template` struct and its methods allow for dynamic email content generation:
+
+```go
+type Template struct {
+	Subject string
+	Body    string
+}
+
+// ParseTemplate parses an email template from a file
+func ParseTemplate(filePath string) (*Template, error)
+
+// RenderTemplate renders the template with the provided data
+func (t *Template) RenderTemplate(data interface{}) (string, error)
+```
 
 ## Contributing
 
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository.
-2. Create a new branch for your feature or bugfix.
-3. Submit a pull request.
-
----
+Contributions are welcome! If you find a bug or have a feature request, please open an issue on the [GitHub repository](https://github.com/aro-wolo/gosend). If you'd like to contribute code, feel free to fork the repository and submit a pull request.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
+GoSend is licensed under the MIT License. See the [LICENSE](https://github.com/aro-wolo/gosend/blob/main/LICENSE) file for more details.
 
 ## Acknowledgments
 
-- Built using [gomail.v2](https://github.com/go-gomail/gomail).
-- Inspired by the need for a simple and flexible email-sending solution in Go.
+- This package uses the [gomail](https://github.com/go-gomail/gomail) library for sending emails.
+- Special thanks to all contributors and users of the package.
 
 ---
 
-## Support
-
-For questions or issues, please open an issue on [GitHub](https://github.com/aro-wolo/gosend/issues).
-
----
+Feel free to explore the [GitHub repository](https://github.com/aro-wolo/gosend) for more details and to contribute to the project!
