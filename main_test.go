@@ -1,8 +1,8 @@
 package gosend_test
 
 import (
-	"errors"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/aro-wolo/gosend"
@@ -87,7 +87,8 @@ func TestNow_MissingRecipient(t *testing.T) {
 	recipients := gosend.Recipients{} // No recipient specified
 
 	err := gosend.Now(config, recipients, "Test Subject", "Test Message")
-	if !errors.Is(err, errors.New("no primary recipient specified")) {
-		t.Errorf("Expected 'no primary recipient specified' error, got: %v", err)
+	expectedError := "no primary recipient specified"
+	if err == nil || strings.TrimSpace(err.Error()) != expectedError {
+		t.Errorf("Expected '%s' error, got: %v", expectedError, err)
 	}
 }
