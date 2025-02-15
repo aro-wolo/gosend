@@ -1,3 +1,16 @@
+<!-- [![Go Reference](https://pkg.go.dev/badge/github.com/aro-wolo/gosend.svg)](https://pkg.go.dev/github.com/aro-wolo/gosend) -->
+
+![GitHub Repo stars](https://img.shields.io/github/stars/aro-wolo/gosend?style=social)
+![GitHub last commit](https://img.shields.io/github/last-commit/aro-wolo/gosend)
+![GitHub issues](https://img.shields.io/github/issues/aro-wolo/gosend)
+![Go Version](https://img.shields.io/github/go-mod/go-version/aro-wolo/gosend)
+![GitHub contributors](https://img.shields.io/github/contributors/aro-wolo/gosend)
+[![Go Report Card](https://goreportcard.com/badge/github.com/aro-wolo/gosend)](https://goreportcard.com/report/github.com/aro-wolo/gosend)
+[![Build Status](https://github.com/aro-wolo/gosend/actions/workflows/go.yml/badge.svg)](https://github.com/aro-wolo/gosend/actions)
+[![codecov](https://codecov.io/gh/aro-wolo/gosend/branch/main/graph/badge.svg)](https://codecov.io/gh/aro-wolo/gosend)
+![Go Module](https://img.shields.io/github/go-mod/go-version/aro-wolo/gosend)
+[![License](https://img.shields.io/github/license/aro-wolo/gosend.svg)](https://github.com/aro-wolo/gosend/blob/main/LICENSE)
+
 # GoSend Email Package
 
 This Go package provides a simple and flexible way to send emails using SMTP. It supports multiple environments (Debug, Test, and Live), allowing you to log emails instead of sending them during development or testing. The package is built on top of the popular `gomail.v2` library.
