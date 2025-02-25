@@ -9,6 +9,7 @@
 [![codecov](https://codecov.io/gh/aro-wolo/gosend/branch/main/graph/badge.svg)](https://codecov.io/gh/aro-wolo/gosend)
 ![Go Module](https://img.shields.io/github/go-mod/go-version/aro-wolo/gosend)
 [![License](https://img.shields.io/github/license/aro-wolo/gosend.svg)](https://github.com/aro-wolo/gosend/blob/main/LICENSE)
+[![wakatime](https://wakatime.com/badge/user/c78c31fe-9c97-4b21-b865-91bc182f2d42.svg)](https://wakatime.com/@c78c31fe-9c97-4b21-b865-91bc182f2d42)
 
 # GoSend Email Package
 
@@ -186,7 +187,7 @@ func main() {
 ### `SMTPConfig`
 
 | Field      | Description                                         | Default Value |
-| ---------- | --------------------------------------------------- | ------------- |
+|------------|-----------------------------------------------------|---------------|
 | `Username` | SMTP username (usually your email address).         | Required      |
 | `Password` | SMTP password.                                      | Required      |
 | `Server`   | SMTP server address (e.g., `smtp.gmail.com`).       | Required      |
@@ -197,7 +198,7 @@ func main() {
 ### `Recipients`
 
 | Field | Description                              | Example                             |
-| ----- | ---------------------------------------- | ----------------------------------- |
+|-------|------------------------------------------|-------------------------------------|
 | `To`  | Primary recipients (required).           | `[]string{"recipient@example.com"}` |
 | `Cc`  | Carbon copy recipients (optional).       | `[]string{"cc@example.com"}`        |
 | `Bcc` | Blind carbon copy recipients (optional). | `[]string{"bcc@example.com"}`       |
