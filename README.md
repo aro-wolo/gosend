@@ -13,7 +13,7 @@
 
 # GoSend Email Package
 
-This Go package provides a simple and flexible way to send emails using SMTP. It supports multiple environments (Debug, Test, and Live), allowing you to log emails instead of sending them during development or testing. The package is built on top of the popular `gomail.v2` library.
+This Go package provides a simple and flexible way to send emails using SMTP. It supports multiple environments (Debug, Test, and Live), allowing you to log emails instead of sending them during development or testing. The package is built on top of the popular `gomail.v2` library and includes a powerful template management system for dynamic email content generation.
 
 ---
 
@@ -25,7 +25,7 @@ This Go package provides a simple and flexible way to send emails using SMTP. It
 - **HTML Emails**: Sends emails with HTML content.
 - **TLS Support**: Configurable TLS settings for secure email delivery.
 - **Debug Mode**: Logs email details instead of sending them in Debug mode.
-- **Template Support**: Optional template system for dynamic email content generation.
+- **Template System**: Supports multi-part templates (header, body, footer) for dynamic email content.
 
 ---
 
@@ -95,47 +95,61 @@ func main() {
 
 ### Example: Sending an Email With Templates
 
-1. **Create a Template File**:
-   Save the following content in a file named `notification_template.html`:
+1. **Create Template Files**:
 
+   Save the following content as separate files:
+
+   **header.html**
    ```html
-   <!DOCTYPE html>
-   <html>
-   	<head>
-   		<title>Notification</title>
-   	</head>
-   	<body>
-   		<h1>Hello, {{.Name}}!</h1>
-   		<p>This is a notification regarding your recent activity.</p>
-   		<p>Details:</p>
-   		<ul>
-   			<li>Activity: {{.Activity}}</li>
-   			<li>Date: {{.Date}}</li>
-   		</ul>
-   		<p>If you have any questions, feel free to contact us.</p>
-   		<p>Best regards,</p>
-   		<p>The Team</p>
-   	</body>
-   </html>
+   <h1>Welcome to Our Service</h1>
    ```
 
-2. **Send Email Using the Template**:
+   **body.html**
+   ```html
+   <p>Hello {{.Name}},</p>
+   <p>We are excited to have you on board!</p>
+   ```
+
+   **footer.html**
+   ```html
+   <p>Thank you for choosing us! <br> Contact us at support@example.com</p>
+   ```
+
+2. **Send Email Using the Template System**:
 
    ```go
    package main
 
    import (
    	"log"
-   	"time"
-
    	"github.com/aro-wolo/gosend"
    )
 
    func main() {
+   	// Initialize template manager
+   	tm := gosend.NewTemplateManager()
+
+   	// Parse templates
+   	err := tm.ParseTemplate("header.html", "body.html", "footer.html")
+   	if err != nil {
+   		log.Fatalf("Failed to parse templates: %v", err)
+   	}
+
+   	// Data to inject into the template
+   	data := map[string]string{
+   		"Name": "John Doe",
+   	}
+
+   	// Render template
+   	renderedBody, err := tm.RenderTemplate(data)
+   	if err != nil {
+   		log.Fatalf("Failed to render template: %v", err)
+   	}
+
    	// Define SMTP configuration
    	config := gosend.SMTPConfig{
    		Username: "your-email@example.com",
-   		Password: "your-email-password",
+   		Password: "your-password",
    		Server:   "smtp.example.com",
    		Port:     587,
    		Mode:     gosend.Live,
@@ -147,31 +161,8 @@ func main() {
    		To: []string{"recipient@example.com"},
    	}
 
-   	// Parse the template
-   	template, err := gosend.ParseTemplate("notification_template.html")
-   	if err != nil {
-   		log.Fatalf("Failed to parse template: %v", err)
-   	}
-
-   	// Define template data
-   	data := struct {
-   		Name     string
-   		Activity string
-   		Date     string
-   	}{
-   		Name:     "John Doe",
-   		Activity: "Account Login",
-   		Date:     time.Now().Format("2006-01-02 15:04:05"),
-   	}
-
-   	// Render the template
-   	renderedBody, err := template.RenderTemplate(data)
-   	if err != nil {
-   		log.Fatalf("Failed to render template: %v", err)
-   	}
-
    	// Send email
-   	err = gosend.Now(config, recipients, "Notification", renderedBody)
+   	err = gosend.Now(config, recipients, "Welcome!", renderedBody)
    	if err != nil {
    		log.Fatalf("Failed to send email: %v", err)
    	}
@@ -210,7 +201,6 @@ func main() {
 ### 1. **Debug Mode**
 
 - Logs email details instead of sending them.
-- Useful for development and testing.
 - Example:
   ```go
   config.Mode = gosend.Debug
@@ -218,8 +208,7 @@ func main() {
 
 ### 2. **Test Mode**
 
-- Sends emails but skips TLS certificate verification.
-- Useful for testing with self-signed certificates.
+- Sends emails but skips TLS verification.
 - Example:
   ```go
   config.Mode = gosend.Test
@@ -228,59 +217,10 @@ func main() {
 ### 3. **Live Mode**
 
 - Sends emails with full TLS verification.
-- Use this in production.
 - Example:
   ```go
   config.Mode = gosend.Live
   ```
-
----
-
-## Template System
-
-The `Template` struct and its methods allow for dynamic email content generation:
-
-```go
-type Template struct {
-	Subject string
-	Body    string
-}
-
-// ParseTemplate parses an email template from a file
-func ParseTemplate(filePath string) (*Template, error)
-
-// RenderTemplate renders the template with the provided data
-func (t *Template) RenderTemplate(data interface{}) (string, error)
-```
-
----
-
-## Error Handling
-
-The `Now` function returns an error if:
-
-- SMTP configuration is incomplete.
-- No primary recipient is specified.
-- Email sending fails.
-
-Example error handling:
-
-```go
-err := gosend.Now(config, recipients, subject, message)
-if err != nil {
-    log.Fatalf("Failed to send email: %v", err)
-}
-```
-
----
-
-## Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository.
-2. Create a new branch for your feature or bugfix.
-3. Submit a pull request.
 
 ---
 
@@ -290,15 +230,8 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ---
 
-## Acknowledgments
-
-- Built using [gomail.v2](https://github.com/go-gomail/gomail).
-- Inspired by the need for a simple and flexible email-sending solution in Go.
-
----
-
 ## Support
 
 For questions or issues, please open an issue on [GitHub](https://github.com/aro-wolo/gosend/issues).
 
----
+

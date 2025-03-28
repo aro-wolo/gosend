@@ -1,6 +1,7 @@
 package gosend
 
 import (
+	"html/template"
 	"os"
 	"strings"
 	"testing"
@@ -52,30 +53,7 @@ func TestNow_DebugMode(t *testing.T) {
 	}
 }
 
-/*
-// Test Now function in Test mode (should not verify TLS)
-func TestNow_TestMode(t *testing.T) {
-	config := testSMTPConfig
-	config.Mode = Test
-	err := Now(config, testRecipients, "Test Subject", "Test Message")
-	if err != nil {
-		t.Errorf("Expected no error in test mode, but got: %v", err)
-	}
-
-} */
-
-/*
-// Test Now function in Live mode (should attempt to send)
-func TestNow_LiveMode(t *testing.T) {
-	config := testSMTPConfig
-	config.Mode = Live
-	err := Now(config, testRecipients, "Test Subject", "Test Message")
-	if err != nil {
-		t.Errorf("Expected no error in live mode, but got: %v", err)
-	}
-}
-*/
-// Test ParseTemplate function for file reading
+// Test TemplateManager ParseTemplate function
 func TestParseTemplate_Success(t *testing.T) {
 	// Create a temp file
 	tmpFile, err := os.CreateTemp("", "template_*.html")
@@ -89,35 +67,32 @@ func TestParseTemplate_Success(t *testing.T) {
 	tmpFile.WriteString(sampleTemplate)
 	tmpFile.Close()
 
-	tmpl, err := ParseTemplate(tmpFile.Name())
+	tm := NewTemplateManager()
+	err = tm.ParseTemplate(tmpFile.Name())
 	if err != nil {
 		t.Fatalf("ParseTemplate failed: %v", err)
-	}
-
-	if tmpl.Body != sampleTemplate {
-		t.Errorf("Expected template body to be '%s', got '%s'", sampleTemplate, tmpl.Body)
 	}
 }
 
 // Test ParseTemplate function for file not found
 func TestParseTemplate_FileNotFound(t *testing.T) {
-	_, err := ParseTemplate("nonexistent.html")
-	if err == nil || !strings.Contains(err.Error(), "failed to read template file") {
-		t.Errorf("Expected 'failed to read template file' error, got: %v", err)
+	tm := NewTemplateManager()
+	err := tm.ParseTemplate("nonexistent.html")
+	if err == nil || !strings.Contains(err.Error(), "failed to parse templates") {
+		t.Errorf("Expected 'failed to parse templates' error, got: %v", err)
 	}
 }
 
-// Test RenderTemplate function
+// Test TemplateManager RenderTemplate function
 func TestRenderTemplate_Success(t *testing.T) {
-	tmpl := &Template{
-		Body: "Hello {{.Name}}",
-	}
+	tm := NewTemplateManager()
+	tm.templates = template.Must(template.New("body.html").Parse("Hello {{.Name}}"))
 
 	data := struct {
 		Name string
 	}{Name: "John"}
 
-	result, err := tmpl.RenderTemplate(data)
+	result, err := tm.RenderTemplate(data)
 	if err != nil {
 		t.Fatalf("RenderTemplate failed: %v", err)
 	}
@@ -130,15 +105,14 @@ func TestRenderTemplate_Success(t *testing.T) {
 
 // Test RenderTemplate with invalid template syntax
 func TestRenderTemplate_InvalidSyntax(t *testing.T) {
-	tmpl := &Template{
-		Body: "Hello {{.x}}",
-	}
+	tm := NewTemplateManager()
+	tm.templates = template.Must(template.New("body.html").Parse("Hello {{.x}}"))
 
 	data := struct {
 		Name string
 	}{Name: "John"}
 
-	_, err := tmpl.RenderTemplate(data)
+	_, err := tm.RenderTemplate(data)
 	if err == nil {
 		t.Errorf("Expected template parsing error, got nil")
 	}
