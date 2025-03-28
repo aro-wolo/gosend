@@ -13,7 +13,7 @@ var testSMTPConfig = SMTPConfig{
 	Password: "password",
 	Server:   "smtp.example.com",
 	Port:     587,
-	Mode:     Live,
+	Mode:     Debug,
 	From:     "sender@example.com",
 }
 
