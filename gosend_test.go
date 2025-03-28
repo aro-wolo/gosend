@@ -64,20 +64,38 @@ func TestNow_CustomSender(t *testing.T) {
 
 // Test ParseTemplate function for file reading
 func TestParseTemplate_Success(t *testing.T) {
+	tm := NewTemplateManager()
+
+	// Create a temp file
 	tmpFile, err := os.CreateTemp("", "template_*.html")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
 	defer os.Remove(tmpFile.Name())
 
-	sampleTemplate := "<h1>Hello {{.Name}}</h1>"
+	// Define the template properly with `define "body.html"`
+	sampleTemplate := `{{define "body.html"}}<h1>Hello {{.Name}}</h1>{{end}}`
 	tmpFile.WriteString(sampleTemplate)
 	tmpFile.Close()
 
-	tm := NewTemplateManager()
 	err = tm.ParseTemplate(tmpFile.Name())
 	if err != nil {
 		t.Fatalf("ParseTemplate failed: %v", err)
+	}
+
+	// Render the template
+	data := struct {
+		Name string
+	}{Name: "John"}
+
+	result, err := tm.RenderTemplate(data)
+	if err != nil {
+		t.Fatalf("RenderTemplate failed: %v", err)
+	}
+
+	expected := "<h1>Hello John</h1>"
+	if result != expected {
+		t.Errorf("Expected '%s', got '%s'", expected, result)
 	}
 }
 
