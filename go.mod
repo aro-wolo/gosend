@@ -1,4 +1,4 @@
-module github.com/aro-wolo/gosend
+module github.com/aro-wolo/gosend/v2
 
 go 1.24.1
 
