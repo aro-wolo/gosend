@@ -62,16 +62,25 @@ func (tm *TemplateManager) ParseTemplate(filePaths ...string) error {
 	return nil
 }
 
-// RenderTemplate applies the data struct to all templates
+// RenderTemplate applies the data struct to all loaded templates and combines them
 func (tm *TemplateManager) RenderTemplate(data interface{}) (string, error) {
 	if tm.templates == nil {
 		return "", errors.New("templates not loaded")
 	}
 
 	var renderedBody strings.Builder
-	err := tm.templates.ExecuteTemplate(&renderedBody, "body.html", data)
-	if err != nil {
-		return "", fmt.Errorf("failed to render template: %v", err)
+
+	// Iterate over all templates in the order they were loaded
+	for _, tmpl := range tm.templates.Templates() {
+		// Skip empty-named templates (sometimes Go creates unnamed ones)
+		if tmpl.Name() == "" {
+			continue
+		}
+
+		err := tmpl.Execute(&renderedBody, data)
+		if err != nil {
+			return "", fmt.Errorf("failed to render template %s: %v", tmpl.Name(), err)
+		}
 	}
 
 	return renderedBody.String(), nil
