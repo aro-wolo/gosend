@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"os"
 	"strings"
 
 	"gopkg.in/gomail.v2"
@@ -40,6 +41,7 @@ type Recipients struct {
 // TemplateManager handles multiple templates
 type TemplateManager struct {
 	templates *template.Template
+	order     []string
 }
 
 // NewTemplateManager creates a new TemplateManager
@@ -47,18 +49,29 @@ func NewTemplateManager() *TemplateManager {
 	return &TemplateManager{}
 }
 
-// ParseTemplate loads multiple template files
 func (tm *TemplateManager) ParseTemplate(filePaths ...string) error {
 	if len(filePaths) == 0 {
 		return errors.New("no template files provided")
 	}
 
-	tmpl, err := template.ParseFiles(filePaths...)
-	if err != nil {
-		return fmt.Errorf("failed to parse templates: %v", err)
+	t := template.New("")
+	tm.order = []string{} // reset
+
+	for _, path := range filePaths {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read template %s: %v", path, err)
+		}
+
+		_, err = t.New(path).Parse(string(content))
+		if err != nil {
+			return fmt.Errorf("failed to parse template %s: %v", path, err)
+		}
+
+		tm.order = append(tm.order, path) // ← Track order
 	}
 
-	tm.templates = tmpl
+	tm.templates = t
 	return nil
 }
 
@@ -68,22 +81,20 @@ func (tm *TemplateManager) RenderTemplate(data interface{}) (string, error) {
 		return "", errors.New("templates not loaded")
 	}
 
-	var renderedBody strings.Builder
+	var out strings.Builder
 
-	// Iterate over all templates in the order they were loaded
-	for _, tmpl := range tm.templates.Templates() {
-		// Skip empty-named templates (sometimes Go creates unnamed ones)
-		if tmpl.Name() == "" {
-			continue
+	for _, name := range tm.order { // ← Use the manually preserved order
+		tmpl := tm.templates.Lookup(name)
+		if tmpl == nil {
+			return "", fmt.Errorf("template %s not found", name)
 		}
 
-		err := tmpl.Execute(&renderedBody, data)
-		if err != nil {
-			return "", fmt.Errorf("failed to render template %s: %v", tmpl.Name(), err)
+		if err := tmpl.Execute(&out, data); err != nil {
+			return "", fmt.Errorf("failed to execute template %s: %v", name, err)
 		}
 	}
 
-	return renderedBody.String(), nil
+	return out.String(), nil
 }
 
 // Now sends an email using SMTP
