@@ -201,15 +201,21 @@ func TestRenderTemplate_NoTemplate(t *testing.T) {
 // Test RenderTemplate with invalid template syntax
 func TestRenderTemplate_InvalidSyntax(t *testing.T) {
 	tm := NewTemplateManager()
-	tm.templates = template.Must(template.New("test").Parse("Hello {{.Invalid}}"))
+
+	// Force a syntax error into tm.templates
+	tmpl, err := template.New("test").Parse("Hello {{.Name")
+	if err == nil {
+		t.Fatalf("expected parse error but got nil")
+	}
+	tm.templates = tmpl
 
 	data := struct {
 		Name string
 	}{Name: "John"}
 
-	_, err := tm.RenderTemplate(data)
+	_, err = tm.RenderTemplate(data)
 	if err == nil {
-		t.Errorf("Expected template parsing error, got nil")
+		t.Errorf("Expected template render error, got nil")
 	}
 }
 
