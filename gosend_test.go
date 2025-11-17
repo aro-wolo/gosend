@@ -2,6 +2,7 @@ package gosend
 
 import (
 	"html/template"
+	"os"
 	"strings"
 	"testing"
 )
@@ -21,6 +22,64 @@ var testRecipients = Recipients{
 	To:  []string{"recipient@example.com"},
 	Cc:  []string{"cc@example.com"},
 	Bcc: []string{"bcc@example.com"},
+}
+
+// helper to create a temp file with given content
+func createTempTemplate(t *testing.T, name, content string) string {
+	t.Helper()
+
+	tmp, err := os.CreateTemp("", name)
+	if err != nil {
+		t.Fatalf("failed to create temp template %s: %v", name, err)
+	}
+
+	if _, err := tmp.WriteString(content); err != nil {
+		t.Fatalf("failed to write to temp template %s: %v", name, err)
+	}
+
+	tmp.Close()
+	return tmp.Name()
+}
+
+func TestParseTemplateOrder(t *testing.T) {
+	// Create test templates
+	header := createTempTemplate(t, "header.html", "<h1>{{.Title}}</h1>")
+	body := createTempTemplate(t, "body.html", "<p>{{.Message}}</p>")
+	body2 := createTempTemplate(t, "body2.html", "<p>body 2</p>")
+	footer := createTempTemplate(t, "footer.html", "<footer>Bye</footer>")
+
+	// Ensure cleanup
+	defer os.Remove(header)
+	defer os.Remove(body)
+	defer os.Remove(body2)
+	defer os.Remove(footer)
+
+	// Initialize TemplateManager
+	tm := NewTemplateManager()
+
+	// Parse templates IN ORDER
+	err := tm.ParseTemplate(header, body, body2, footer)
+	if err != nil {
+		t.Fatalf("ParseTemplate failed: %v", err)
+	}
+
+	// Render template
+	data := map[string]string{
+		"Title":   "Hello",
+		"Message": "This is a test",
+	}
+
+	output, err := tm.RenderTemplate(data)
+	if err != nil {
+		t.Fatalf("RenderTemplate failed: %v", err)
+	}
+
+	// Expected output order
+	expected := "<h1>Hello</h1><p>This is a test</p><p>body 2</p><footer>Bye</footer>"
+
+	if output != expected {
+		t.Errorf("templates not rendered in correct order.\nExpected:\n%s\nGot:\n%s", expected, output)
+	}
 }
 
 // Test Now function for missing SMTP config
