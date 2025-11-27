@@ -163,7 +163,11 @@ func TestParseTemplate_FileNotFound(t *testing.T) {
 	tm := NewTemplateManager()
 
 	err := tm.ParseTemplate("nonexistent.html")
-	if err == nil || !strings.Contains(err.Error(), "failed to parse templates") {
+	if err == nil {
+		t.Fatal("Expected error for missing template, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "failed to read template") {
 		t.Errorf("Expected file not found error, got: %v", err)
 	}
 }
