@@ -5,30 +5,21 @@ import (
 	"testing"
 )
 
-func TestSendMailDebug(t *testing.T) {
-	// Create a temporary directory for templates
-	tmpDir := "examples/templates"
-	err := os.MkdirAll(tmpDir, 0755)
-	if err != nil {
+// TestSendMail_Debug tests SendMail in Debug mode
+func TestSendMail_Debug(t *testing.T) {
+	// Setup temporary template directory
+	tmpDir := "tmp/templates"
+	if err := os.MkdirAll(tmpDir, 0755); err != nil {
 		t.Fatalf("Failed to create template directory: %v", err)
 	}
-	// Clean up after test
-	defer os.RemoveAll("examples/templates")
+	defer os.RemoveAll("tmp") // cleanup after test
 
-	// Create template files
-	files := map[string]string{
-		"header.html":  "<h1>Welcome to GoSend</h1>",
-		"welcome.html": "<p>Hello {{.Name}}</p>",
-		"footer.html":  "<hr>Thank you",
-	}
+	// Create dummy templates
+	os.WriteFile(tmpDir+"/header.html", []byte("<h1>Header</h1>"), 0644)
+	os.WriteFile(tmpDir+"/welcome.html", []byte("<p>Hello {{.Name}}</p>"), 0644)
+	os.WriteFile(tmpDir+"/footer.html", []byte("<hr>Footer</hr>"), 0644)
 
-	for name, content := range files {
-		if err = os.WriteFile(tmpDir+"/"+name, []byte(content), 0644); err != nil {
-			t.Fatalf("Failed to write template file %s: %v", name, err)
-		}
-	}
-
-	// SMTP configuration in Debug mode
+	// Dummy SMTP config in Debug mode
 	config := SMTPConfig{
 		Username: "dummy",
 		Password: "dummy",
@@ -36,16 +27,37 @@ func TestSendMailDebug(t *testing.T) {
 		Mode:     Debug,
 	}
 
-	// Recipient list
 	recipients := Recipients{
 		To: []string{"user@test.com"},
 	}
 
-	err = SendMail(config, recipients, "Test Subject", "welcome", map[string]any{
-		"Name": "Tester Guy",
+	// Call SendMail
+	err := SendMail(config, recipients, "Test Subject", "welcome", map[string]any{
+		"Name": "Tester",
 	}, tmpDir)
 
 	if err != nil {
 		t.Errorf("SendMail failed: %v", err)
+	}
+}
+
+// TestSendMail_TemplateNotFound checks that missing templates return error
+func TestSendMail_TemplateNotFound(t *testing.T) {
+	config := SMTPConfig{
+		Username: "dummy",
+		Password: "dummy",
+		Server:   "smtp.test",
+		Mode:     Debug,
+	}
+
+	recipients := Recipients{
+		To: []string{"user@test.com"},
+	}
+
+	// Intentionally missing template
+	err := SendMail(config, recipients, "Test", "nonexistent", map[string]any{}, "tmp")
+
+	if err == nil {
+		t.Fatal("Expected error for missing template, got nil")
 	}
 }
