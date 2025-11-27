@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -16,19 +17,25 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.25'
+        go-version: '1.22'
 
-    - name: Build
+    - name: Build library
       run: go build -v ./...
 
     - name: Run Tests & Generate Coverage
       run: |
+        echo "Running tests only in gosend/v2 (excluding examples)..."
+        mkdir -p coverage
         for pkg in $(go list ./... | grep -v /examples/); do
-            go test -v -coverprofile=coverage.txt -covermode=atomic $pkg
+          go test -v -covermode=atomic -coverprofile=coverage/$(echo $pkg | tr / _).out $pkg
         done
+        # Combine all coverage profiles into one
+        echo "mode: atomic" > coverage.txt
+        tail -q -n +2 coverage/*.out >> coverage.txt
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
+        files: coverage.txt
         slug: aro-wolo/gosend
