@@ -16,16 +16,19 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.22'  # Use the latest stable version
+        go-version: '1.25'
 
     - name: Build
       run: go build -v ./...
 
     - name: Run Tests & Generate Coverage
-      run: go test -v -coverprofile=coverage.txt ./...
+      run: |
+        for pkg in $(go list ./... | grep -v /examples/); do
+            go test -v -coverprofile=coverage.txt -covermode=atomic $pkg
+        done
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}  
+        token: ${{ secrets.CODECOV_TOKEN }}
         slug: aro-wolo/gosend
