@@ -1,4 +1,4 @@
-# GoSend Email Package (v2)
+# GoSend Email Package (v3)
 
 <!-- Badges -->
 ![GitHub Repo stars](https://img.shields.io/github/stars/aro-wolo/gosend?style=social)
@@ -22,6 +22,7 @@ It supports:
 - SMTP email sending  
 - Multiple environments: Debug, Test, Live  
 - HTML email bodies  
+- Normal and inline file attachments
 - Template-based emails  
 - Multi-file template stacking (header/body/footer)  
 - TLS configuration  
@@ -32,7 +33,32 @@ GoSend is lightweight, dependency‑minimal, and easy to integrate into any Go p
 
 ---
 
-# 🚀 What’s New in v2
+# What's New in v3.0.0
+
+- Send normal attachments or inline files with HTML `cid:` references.
+- Pass attachments directly to `Now` and `SendMail`, separately from SMTP settings.
+- Validate attachment paths and inline Content-IDs before delivery.
+
+## Migrating from v2
+
+This release changes both sending function signatures. Update imports to
+`github.com/aro-wolo/gosend/v3` and add the attachments argument (or `nil`):
+
+```go
+// No attachments, with an optional sender override.
+err := gosend.Now(config, recipients, "Hello", "<p>Hello!</p>",
+    nil, "sender@example.com")
+
+// No attachments, with an optional template directory.
+err = gosend.SendMail(config, recipients, "Welcome", "welcome",
+    data, nil, "templates")
+```
+
+The attachment argument follows the HTML body in `Now`, and the template data
+in `SendMail`. Optional sender and template directory arguments stay last.
+`SMTPConfig` remains unchanged.
+
+## Features introduced in v2
 
 ### ✔ Added High-Level Helper: `SendMail()`
 A simple wrapper to send template emails in one line.
@@ -48,7 +74,7 @@ Header → Body → Footer.
 ## Installation
 
 ```bash
-go get github.com/aro-wolo/gosend/v2
+go get github.com/aro-wolo/gosend/v3@v3.0.0
 ```
 
 ---
@@ -70,7 +96,7 @@ recipients := gosend.Recipients{
     To: []string{"user@example.com"},
 }
 
-err := gosend.Now(config, recipients, "Hello", "<p>Hi there!</p>")
+err := gosend.Now(config, recipients, "Hello", "<p>Hi there!</p>", nil)
 if err != nil {
     log.Fatal(err)
 }
@@ -100,13 +126,14 @@ err := gosend.SendMail(
     map[string]any{
         "Name": "John Doe",
     },
+    nil, // no attachments
     "templates", // optional base path
 )
 ```
 
 ---
 
-# 🧩 High-Level Helper API (v2)
+# 🧩 High-Level Helper API
 
 ```go
 func SendMail(
@@ -115,6 +142,7 @@ func SendMail(
     subject string,
     templateName string,
     data map[string]any,
+    attachments []Attachment,
     templateBasePath ...string,
 ) error
 ```
@@ -138,8 +166,61 @@ templates/footer.html
 Usage:
 
 ```go
-gosend.SendMail(config, r, "Verify Email", "verify", data, "templates")
+gosend.SendMail(config, r, "Verify Email", "verify", data, nil, "templates")
 ```
+
+---
+
+## Attachments
+
+Pass an `[]gosend.Attachment` parameter to either `Now` (after the HTML body)
+or `SendMail` (after the template data). Attachments are per-email arguments,
+not SMTP configuration. A file is a normal, downloadable attachment unless
+`Inline` is `true`. Both types can be used in
+the same email.
+
+```go
+attachments := []gosend.Attachment{
+    {Path: "documents/report.pdf"},
+    {Path: "images/logo.png", Inline: true, ContentID: "company-logo"},
+}
+
+err := gosend.Now(config, recipients, "Your report",
+    `<p>Your report is attached.</p><img src="cid:company-logo" alt="Logo">`,
+    attachments)
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+For template emails, put the same `cid:company-logo` reference in the HTML
+template and pass the attachments to `SendMail`:
+
+```go
+err := gosend.SendMail(config, recipients, "Your report", "report",
+    map[string]any{"Name": "John"}, attachments, "templates")
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+| Attachment field | Description |
+|------------------|-------------|
+| Path | Required path to a readable file on disk |
+| Inline | `false` (default) for a normal attachment; `true` for an inline MIME part |
+| ContentID | Optional inline identifier without `<` or `>`; defaults to the file's base name (e.g. `logo.png`, referenced as `cid:logo.png`) |
+
+Inline Content-IDs must be unique within the email and contain only printable
+ASCII characters, excluding spaces and angle brackets. Use an explicit
+Content-ID when the file name contains spaces or non-ASCII characters.
+Setting `ContentID` on a normal attachment returns an error.
+
+Files are read into memory before delivery, including in Debug mode. Missing
+or unreadable files and invalid attachment settings return errors; Debug still
+does not send any email. File names and MIME types are derived from the paths.
+Pass an empty slice or `nil` for no attachments. Existing calls must add `nil`
+after the HTML body (`Now`) or template data (`SendMail`). Optional sender and
+template base path arguments remain last.
 
 ---
 
@@ -168,6 +249,18 @@ gosend.SendMail(config, r, "Verify Email", "verify", data, "templates")
 
 # 🧪 Low-Level Template API
 
+### Now
+
+```go
+func Now(
+    config SMTPConfig,
+    recipients Recipients,
+    subject, msg string,
+    attachments []Attachment,
+    from ...string,
+) error
+```
+
 ### TemplateManager
 
 ```go
@@ -188,4 +281,3 @@ https://github.com/aro-wolo/gosend/issues
 # 📄 License
 
 MIT License.
-

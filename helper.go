@@ -5,13 +5,15 @@ import (
 )
 
 // SendMail is a convenience wrapper that loads header/body/footer templates,
-// renders them, and sends a fully formatted email.
+// renders them, and sends a fully formatted email. Pass nil attachments to send
+// only the rendered HTML body.
 func SendMail(
 	config SMTPConfig,
 	recipients Recipients,
 	subject string,
 	templateName string,
 	data map[string]any,
+	attachments []Attachment,
 	templateBasePath ...string, // optional override
 ) error {
 
@@ -39,7 +41,7 @@ func SendMail(
 	}
 
 	// send
-	if err := Now(config, recipients, subject, body); err != nil {
+	if err := Now(config, recipients, subject, body, attachments); err != nil {
 		return fmt.Errorf("failed sending email: %w", err)
 	}
 

@@ -85,7 +85,7 @@ func TestParseTemplateOrder(t *testing.T) {
 // Test Now function for missing SMTP config
 func TestNow_MissingSMTPConfig(t *testing.T) {
 	config := SMTPConfig{}
-	err := Now(config, testRecipients, "Test Subject", "Test Message")
+	err := Now(config, testRecipients, "Test Subject", "Test Message", nil)
 	if err == nil || !strings.Contains(err.Error(), "SMTP configuration is missing required fields") {
 		t.Errorf("Expected error for missing SMTP configuration, got: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestNow_MissingSMTPConfig(t *testing.T) {
 // Test Now function for missing recipient
 func TestNow_MissingRecipient(t *testing.T) {
 	recipients := Recipients{}
-	err := Now(testSMTPConfig, recipients, "Test Subject", "Test Message")
+	err := Now(testSMTPConfig, recipients, "Test Subject", "Test Message", nil)
 	if err == nil || !strings.Contains(err.Error(), "no primary recipient specified") {
 		t.Errorf("Expected error for missing recipients, got: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestNow_DebugMode(t *testing.T) {
 	config := testSMTPConfig
 	config.Mode = Debug
 
-	err := Now(config, testRecipients, "Test Subject", "Test Message")
+	err := Now(config, testRecipients, "Test Subject", "Test Message", nil)
 	if err != nil {
 		t.Errorf("Expected no error in debug mode, but got: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestNow_DebugMode(t *testing.T) {
 // Test Now function with a custom sender
 func TestNow_CustomSender(t *testing.T) {
 	customSender := "custom@example.com"
-	err := Now(testSMTPConfig, testRecipients, "Test Subject", "Test Message", customSender)
+	err := Now(testSMTPConfig, testRecipients, "Test Subject", "Test Message", nil, customSender)
 	if err != nil {
 		t.Errorf("Expected no error with custom sender, got: %v", err)
 	}
@@ -225,7 +225,7 @@ func TestRenderTemplate_InvalidSyntax(t *testing.T) {
 
 // Test Now function with missing subject and message
 /* func TestNow_MissingSubjectAndMessage(t *testing.T) {
-	err := Now(testSMTPConfig, testRecipients, "", "")
+	err := Now(testSMTPConfig, testRecipients, "", "", nil)
 	if err != nil {
 		t.Errorf("Expected no error for empty subject and message, got: %v", err)
 	}

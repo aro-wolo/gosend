@@ -34,7 +34,7 @@ func TestSendMail_Debug(t *testing.T) {
 	// Call SendMail
 	err := SendMail(config, recipients, "Test Subject", "welcome", map[string]any{
 		"Name": "Tester",
-	}, tmpDir)
+	}, nil, tmpDir)
 
 	if err != nil {
 		t.Errorf("SendMail failed: %v", err)
@@ -55,7 +55,7 @@ func TestSendMail_TemplateNotFound(t *testing.T) {
 	}
 
 	// Intentionally missing template
-	err := SendMail(config, recipients, "Test", "nonexistent", map[string]any{}, "tmp")
+	err := SendMail(config, recipients, "Test", "nonexistent", map[string]any{}, nil, "tmp")
 
 	if err == nil {
 		t.Fatal("Expected error for missing template, got nil")

@@ -22,7 +22,7 @@ jobs:
 
     - name: Run Tests & Generate Coverage
       run: |
-        echo "Running tests only in gosend/v2 (excluding examples)..."
+        echo "Running tests only in gosend/v3 (excluding examples)..."
         mkdir -p coverage
         for pkg in $(go list ./... | grep -v /examples/); do
           go test -v -covermode=atomic -coverprofile=coverage/$(echo $pkg | tr / _).out $pkg

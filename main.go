@@ -1,12 +1,16 @@
 package gosend
 
 import (
+	"bytes"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
+	"mime"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"gopkg.in/gomail.v2"
@@ -29,6 +33,13 @@ type SMTPConfig struct {
 	Port     int
 	Mode     Environment // Debug or Live
 	From     string      // Optional sender email
+}
+
+// Attachment describes a file to send with an email.
+type Attachment struct {
+	Path      string // File path on disk
+	Inline    bool   // False sends a normal attachment; true embeds the file
+	ContentID string // Optional inline CID, without angle brackets; defaults to the file's base name
 }
 
 // Recipients represents the recipients of the email
@@ -97,8 +108,8 @@ func (tm *TemplateManager) RenderTemplate(data interface{}) (string, error) {
 	return out.String(), nil
 }
 
-// Now sends an email using SMTP
-func Now(config SMTPConfig, r Recipients, subject, msg string, from ...string) error {
+// Now sends an email using SMTP. Pass nil attachments to send only the HTML body.
+func Now(config SMTPConfig, r Recipients, subject, msg string, attachments []Attachment, from ...string) error {
 	if config.Username == "" || config.Password == "" || config.Server == "" {
 		return errors.New("SMTP configuration is missing required fields")
 	}
@@ -131,6 +142,10 @@ func Now(config SMTPConfig, r Recipients, subject, msg string, from ...string) e
 		m.SetHeader("Bcc", r.Bcc...)
 	}
 
+	if err := addAttachments(m, attachments); err != nil {
+		return err
+	}
+
 	d := gomail.NewDialer(config.Server, config.Port, config.Username, config.Password)
 	d.TLSConfig = &tls.Config{
 		ServerName:         config.Server,
@@ -145,5 +160,67 @@ func Now(config SMTPConfig, r Recipients, subject, msg string, from ...string) e
 		log.Printf("'🛠 [DEBUG MODE] Email not sent. Details:\nFrom: %s\nTo: %+v\nCC: %+v\nBCC: %+v\nSubject: %s\n", finalFrom, r.To, r.Cc, r.Bcc, subject)
 	}
 
+	return nil
+}
+
+func addAttachments(m *gomail.Message, attachments []Attachment) error {
+	contentIDs := make(map[string]bool)
+	for _, attachment := range attachments {
+		if attachment.Path == "" {
+			return errors.New("attachment path is empty")
+		}
+		if !attachment.Inline && attachment.ContentID != "" {
+			return fmt.Errorf("attachment %q: ContentID is only supported for inline attachments", attachment.Path)
+		}
+
+		name := filepath.Base(attachment.Path)
+		headers := map[string][]string{
+			"Content-Disposition": {mime.FormatMediaType("attachment", map[string]string{"filename": name})},
+		}
+		if attachment.Inline {
+			contentID := attachment.ContentID
+			if contentID == "" {
+				contentID = name
+			}
+			for _, c := range contentID {
+				if c <= ' ' || c >= 127 || c == '<' || c == '>' {
+					return fmt.Errorf("attachment %q: invalid inline ContentID %q", attachment.Path, contentID)
+				}
+			}
+			if contentIDs[contentID] {
+				return fmt.Errorf("attachment %q: duplicate inline ContentID %q", attachment.Path, contentID)
+			}
+			contentIDs[contentID] = true
+			headers["Content-Disposition"] = []string{mime.FormatMediaType("inline", map[string]string{"filename": name})}
+			headers["Content-ID"] = []string{"<" + contentID + ">"}
+		}
+		contentType := mime.TypeByExtension(filepath.Ext(name))
+		if contentType == "" {
+			contentType = "application/octet-stream"
+		}
+		mediaType, params, err := mime.ParseMediaType(contentType)
+		if err != nil {
+			return fmt.Errorf("attachment %q: invalid content type: %w", attachment.Path, err)
+		}
+		params["name"] = name
+		headers["Content-Type"] = []string{mime.FormatMediaType(mediaType, params)}
+
+		content, err := os.ReadFile(attachment.Path)
+		if err != nil {
+			return fmt.Errorf("failed to read attachment %q: %w", attachment.Path, err)
+		}
+		settings := []gomail.FileSetting{
+			gomail.SetHeader(headers),
+			gomail.SetCopyFunc(func(w io.Writer) error {
+				_, err := io.Copy(w, bytes.NewReader(content))
+				return err
+			}),
+		}
+		if attachment.Inline {
+			m.Embed(attachment.Path, settings...)
+		} else {
+			m.Attach(attachment.Path, settings...)
+		}
+	}
 	return nil
 }

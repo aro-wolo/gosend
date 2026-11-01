@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/aro-wolo/gosend/v2" // update path to your module
+	"github.com/aro-wolo/gosend/v3" // update path to your module
 )
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 	<p>This is a test email sent using GoSend's Now() function without templates.</p>
 	`
 
-	err := gosend.Now(config, recipients, subject, message)
+	err := gosend.Now(config, recipients, subject, message, nil)
 	if err != nil {
 		log.Fatalf("Failed to send email: %v", err)
 	}

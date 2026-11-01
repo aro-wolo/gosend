@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/aro-wolo/gosend/v2"
+	"github.com/aro-wolo/gosend/v3"
 )
 
 func main() {
@@ -23,7 +23,7 @@ func main() {
 		"Name": "Abiodun",
 	}
 
-	err := gosend.SendMail(config, recipients, "Welcome!", "welcome", data, "templates")
+	err := gosend.SendMail(config, recipients, "Welcome!", "welcome", data, nil, "templates")
 	if err != nil {
 		log.Fatal(err)
 	} else {
